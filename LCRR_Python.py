@@ -1,0 +1,46 @@
+import arcpy
+import datetime
+import reportlab
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
+
+# Set the workspace 
+gdb = r'E:\Data\GeoData\SDE\Newport_STG.sde'
+
+gdb = r'C:\Users\JR067290\OneDrive - Jacobs\Documents\ArcGIS\Projects\Newport_LCRR\Newport_LCRR.gdb'
+
+
+arcpy.env.workspace = gdb
+# Feature class and related table paths
+##use the fc/table in the map
+# wServices = f'{gdb}\\wServices'
+wServices = 'wServices'
+# LCRR_Letter_Tracking = f'{gdb}\\LCRR_Letter_Tracking'
+LCRR_Letter_Tracking = 'LCRR_Letter_Tracking'
+
+# Get the current date
+current_date = datetime.datetime.now().strftime("%Y-%m-%d")  # Formats the date as YYYY-MM-DD
+
+# Determine whether to process selected features or all features
+use_selected_features = False
+if int(arcpy.GetCount_management(wServices)[0]) > 0:
+    use_selected_features = True
+
+# Fields to be used from the feature class and related table
+feature_fields = ["LetterRelID"]
+table_fields = ["LetterRelID", "LetterSentDate", "LetterType"]
+
+##only start edit session when running outisde of 
+# Start an edit session and operation
+# with arcpy.da.Editor(arcpy.env.workspace) as editor:
+#     # Create a SearchCursor for the feature class
+with arcpy.da.SearchCursor(wServices, feature_fields, None if use_selected_features else "LetterRelID IS NOT NULL") as cursor:
+    # Open an InsertCursor to add records to the related table
+    with arcpy.da.InsertCursor(LCRR_Letter_Tracking, table_fields) as insert_cursor:
+        for row in cursor:
+            # Create a new row for the related table
+            new_row = (row[0], current_date, "Postcard")  # Include LetterRelID, current date, and set LetterType to "Postcard"
+            # Insert the new row into the related table
+            insert_cursor.insertRow(new_row)
+
+print("New records added to the LCRR_Letter_Tracking table.")
