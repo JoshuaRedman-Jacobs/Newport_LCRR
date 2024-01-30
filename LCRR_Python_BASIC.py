@@ -31,18 +31,30 @@ if int(arcpy.GetCount_management(wServices)[0]) > 0:
 feature_fields = ["LetterRelID", "PointAddress"]
 table_fields = ["LetterRelID", "LetterSentDate", "LetterType"]
 
-##only start edit session when running outisde of 
-# Start an edit session and operation
-# with arcpy.da.Editor(arcpy.env.workspace) as editor:
-with arcpy.da.SearchCursor(wServices, feature_fields, None if use_selected_features else "LetterRelID IS NOT NULL") as cursor:
-    # Open an InsertCursor to add records to the related table
-    with arcpy.da.InsertCursor(LCRR_Letter_Tracking, table_fields) as insert_cursor:
-        rows = [row for row in cursor]
-        if rows:
-            for row in rows:
-                # Create a new row for the related table
-                new_row = (row[0], current_date, "Postcard")  # Include LetterRelID, current date, and set LetterType to "Postcard"
-                # Insert the new row into the related table
-                insert_cursor.insertRow(new_row)
+# Editor session
+edit = arcpy.da.Editor(gdb)
+# Start an edit session and edit operation
+edit.startEditing(False, True)
+edit.startOperation()
+try:
+    with arcpy.da.SearchCursor(wServices, feature_fields, None if use_selected_features else "LetterRelID IS NOT NULL") as cursor:
+        # Open an InsertCursor to add records to the related table
+        with arcpy.da.InsertCursor(LCRR_Letter_Tracking, table_fields) as insert_cursor:
+            rows = [row for row in cursor]
+            if rows:
+                for row in rows:
+                    # Create a new row for the related table
+                    new_row = (row[0], current_date, "Postcard")  # Include LetterRelID, current date, and set LetterType to "Postcard"
+                    # Insert the new row into the related table
+                    insert_cursor.insertRow(new_row)
 
-print("Operation completed: Records added.")
+
+    # Stop the edit operation, and commit the changes
+    edit.stopOperation()
+    edit.stopEditing(True)
+    print("Operation completed: Records added.")
+
+except Exception as e:
+    # If an error occurred, abort the edit operation
+    edit.abortOperation()
+    print("An error occurred:", str(e))
