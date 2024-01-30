@@ -62,8 +62,6 @@ def generate_pdf(output_pdf, cursor):
                 y = height - top_margin - label_height
 
     c.save()
-
-
 # Determine whether to process selected features or all features
 use_selected_features = False
 if int(arcpy.GetCount_management(wServices)[0]) > 0:
