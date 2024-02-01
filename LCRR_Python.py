@@ -7,7 +7,7 @@ from reportlab.lib.pagesizes import letter
 # Set the workspace 
 working_folder = r'\\MNUSLAS2NPTCX02\Data\Analysis\LCRR\Postcards'
 # gdb = r'\\MNUSLAS2NPTCX02\Data\Connections\NewportSTG.sde'
-gdb = r'\\MNUSLAS2NPTCX02\Data\Connections\NWDWaterSystem_EDIT.sde'
+gdb = r'\\MNUSLAS2NPTCX02\Data\Connections\NWDWaterSystem_EDIT_AGOL.sde'
 
 arcpy.env.workspace = str(gdb)
 # Feature class and related table paths
