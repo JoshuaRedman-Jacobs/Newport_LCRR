@@ -1,4 +1,5 @@
 import arcpy
+import uuid
 import datetime
 import reportlab
 from reportlab.pdfgen import canvas
@@ -69,33 +70,40 @@ if int(arcpy.GetCount_management(wServices)[0]) > 0:
 
 # Fields to be used from the feature class and related table
 feature_fields = ["LetterRelID", "PointAddress"]
-table_fields = ["LetterRelID", "LetterSentDate", "LetterType"]
+table_fields = ["LetterID", "LetterRelID", "LetterSentDate", "LetterType"]
+
 # Editor session
 edit = arcpy.da.Editor(gdb)
 # Start an edit session and edit operation
 edit.startEditing(False, True)
 edit.startOperation()
+
 try:
     with arcpy.da.SearchCursor(wServices, feature_fields, None if use_selected_features else "LetterRelID IS NOT NULL") as cursor:
+        # Read all rows into a list first
+        rows = [row for row in cursor]
+
         # Open an InsertCursor to add records to the related table
         with arcpy.da.InsertCursor(LCRR_Letter_Tracking, table_fields) as insert_cursor:
-            rows = [row for row in cursor]
-            if rows:
-                for row in rows:
+            for row in rows:
+                if row[0] is not None:  # Check if LetterRelID is not NULL
                     # Create a new row for the related table
-                    new_row = (row[0], current_date, "Postcard")  # Include LetterRelID, current date, and set LetterType to "Postcard"
+                    new_row = (str(uuid.uuid4()), row[0], current_date, "Postcard")  # Include a new UUID, LetterRelID, current date, and set LetterType to "Postcard"
                     # Insert the new row into the related table
                     insert_cursor.insertRow(new_row)
-                # generate the pdf 
-                generate_pdf(output_pdf, rows)
-                
+                else:
+                    arcpy.AddMessage(f"Record with Address '{row[1]}' has a NULL value in LetterRelID")
+            
+        # Generate the PDF with non-NULL rows
+        non_null_rows = [row for row in rows if row[0] is not None]
+        generate_pdf(output_pdf, non_null_rows)
+
     # Stop the edit operation, and commit the changes
     edit.stopOperation()
     edit.stopEditing(True)
-    print("Operation completed: Records added and PDF generated.")
+    arcpy.AddMessage("Operation completed: Records added and PDF generated.")
 
 except Exception as e:
     # If an error occurred, abort the edit operation
     edit.abortOperation()
-    print("An error occurred:", str(e))
-
+    arcpy.AddError(f"An error occurred: {str(e)}")
