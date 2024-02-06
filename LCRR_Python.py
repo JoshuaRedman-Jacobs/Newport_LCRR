@@ -6,9 +6,10 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 
 # Set the workspace 
-working_folder = r'\\MNUSLAS2NPTCX02\Data\Analysis\LCRR\Postcards'
-# gdb = r'\\MNUSLAS2NPTCX02\Data\Connections\NewportSTG.sde'
-gdb = r'\\MNUSLAS2NPTCX02\Data\Connections\NWDWaterSystem_EDIT_AGOL.sde'
+# working_folder = r'\\MNUSLAS2NPTCX02\Data\Analysis\LCRR\Postcards'
+working_folder = r'C:\Users\JR067290\OneDrive - Jacobs\Documents\ArcGIS\Projects\Newport_LCRR'
+# gdb = r'\\MNUSLAS2NPTCX02\Data\Connections\NWDWaterSystem_EDIT_AGOL.sde'
+gdb = r'C:\Users\JR067290\OneDrive - Jacobs\Documents\ArcGIS\Projects\Newport_LCRR\Newport_LCRR.gdb'
 
 arcpy.env.workspace = str(gdb)
 # Feature class and related table paths
