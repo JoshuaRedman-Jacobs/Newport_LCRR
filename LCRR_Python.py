@@ -3,13 +3,13 @@ import uuid
 import datetime
 import reportlab
 from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import letter
+from PyPDF2 import PdfFileReader, PdfFileWriter
 
 # Set the workspace 
-# working_folder = r'\\MNUSLAS2NPTCX02\Data\Analysis\LCRR\Postcards'
-working_folder = r'C:\Users\JR067290\OneDrive - Jacobs\Documents\ArcGIS\Projects\Newport_LCRR'
-# gdb = r'\\MNUSLAS2NPTCX02\Data\Connections\NWDWaterSystem_EDIT_AGOL.sde'
-gdb = r'C:\Users\JR067290\OneDrive - Jacobs\Documents\ArcGIS\Projects\Newport_LCRR\Newport_LCRR.gdb'
+working_folder = r'\\MNUSLAS2NPTCX02\Data\Analysis\LCRR\Postcards'
+# working_folder = r'C:\Users\JR067290\OneDrive - Jacobs\Documents\ArcGIS\Projects\Newport_LCRR'
+gdb = r'\\MNUSLAS2NPTCX02\Data\Connections\NWDWaterSystem_EDIT_AGOL.sde'
+# gdb = r'C:\Users\JR067290\OneDrive - Jacobs\Documents\ArcGIS\Projects\Newport_LCRR\Newport_LCRR.gdb'
 
 arcpy.env.workspace = str(gdb)
 # Feature class and related table paths
@@ -22,48 +22,53 @@ LCRR_Letter_Tracking = str("LCRR Letter Tracking")
 # Get the current date
 current_date = datetime.datetime.now().strftime("%Y-%m-%d")  # Formats the date as YYYY-MM-DD
 
+
 # Output PDF path
-output_pdf = working_folder + str('\Postcard_') + current_date + str('.pdf')
+# output_pdf_path = working_folder + 'Postcards\Postcard_' + current_date + '.pdf'
+template_pdf_path = f'{working_folder}\\Newport_SLM_Postcard.pdf'
 
-####
-# Avery 5160 label dimensions and layout (in points; 1 point = 1/72 inch)
-label_width = 2.625 * 72  # Label width in points
-label_height = 1 * 72  # Label height in points
-columns = 3  # Number of columns
-rows = 10  # Number of rows
-top_margin = 0.5 * 72  # Top margin in points
-left_margin = 0.1875 * 72  # Left margin in points
-x_gap = 0.125 * 72  # Gap between columns
-y_gap = 0  # Gap between rows
+def add_multiline_address_to_pdf(template_pdf_path, output_pdf_path, address_lines, x_position=288, y_position=94, line_spacing=14):
+    """
+    Adds a multi-line address to a PDF.
 
-# Initialize PDF canvas and other related variables
-def initialize_pdf(output_pdf):
-    c = canvas.Canvas(output_pdf, pagesize=letter)
-    width, height = letter
-    x, y = left_margin, height - top_margin - label_height
-    return c, width, height, x, y
-
-# Function to draw an address label
-def draw_label(c, x, y, address):
-    c.drawString(x, y, address)
-
-
-# Function to generate and save the PDF
-def generate_pdf(output_pdf, cursor):
-    c, width, height, x, y = initialize_pdf(output_pdf)
-
-    for row in cursor:
-        address = row[1] if row[1] is not None else "No Address Provided"
-        draw_label(c, x, y, address)
-        x += label_width + x_gap
-        if x + label_width > width - left_margin:
-            x = left_margin
-            y -= label_height + y_gap
-            if y < top_margin:
-                c.showPage()
-                y = height - top_margin - label_height
-
+    Parameters:
+    - template_pdf_path: Path to the input PDF template.
+    - output_pdf_path: Path where the modified PDF will be saved.
+    - address_lines: A list of strings, each representing a line of the address.
+    - x_position: The X coordinate for the start of the address.
+    - y_position: The Y coordinate for the start of the address (bottom line).
+    - line_spacing: The amount of space between each line of the address.
+    """
+    # Create a temporary PDF with the address
+    address_pdf_path = 'temp_address_overlay.pdf'
+    c = canvas.Canvas(address_pdf_path)
+    
+    # Draw each line of the address, adjusting the Y position for each line
+    current_y_position = y_position
+    for line in reversed(address_lines):  # Start from the bottom line if y_position is the bottom line
+        c.drawString(x_position, current_y_position, line)
+        current_y_position += line_spacing  # Move up for the next line
+    
     c.save()
+
+    # Merge the address overlay with the original PDF
+    original = PdfFileReader(open(template_pdf_path, 'rb'))
+    address_overlay = PdfFileReader(open(address_pdf_path, 'rb'))
+    output_pdf = PdfFileWriter()
+
+    # Assuming you're adding the address to the first page of the PDF
+    page = original.getPage(0)
+    page.mergePage(address_overlay.getPage(0))
+    output_pdf.addPage(page)
+
+    # If there are more pages, add them too
+    for pageNum in range(1, original.numPages):
+        output_pdf.addPage(original.getPage(pageNum))
+    
+    with open(output_pdf_path, 'wb') as out_file:
+        output_pdf.write(out_file)
+        
+           
 # Determine whether to process selected features or all features
 use_selected_features = False
 if int(arcpy.GetCount_management(wServices)[0]) > 0:
@@ -92,12 +97,12 @@ try:
                     new_row = (str(uuid.uuid4()), row[0], current_date, "Postcard")  # Include a new UUID, LetterRelID, current date, and set LetterType to "Postcard"
                     # Insert the new row into the related table
                     insert_cursor.insertRow(new_row)
+                    # arcpy.AddMessage(f"{row[1]}")
+                    address_lines = [row[1], "Newport, RI 02840", 'cityofnewport.com/lead']
+                    output_pdf_path = working_folder + '\Postcard_' + row[0] + '.pdf'
+                    add_multiline_address_to_pdf(template_pdf_path, output_pdf_path, address_lines)
                 else:
                     arcpy.AddMessage(f"Record with Address '{row[1]}' has a NULL value in LetterRelID")
-            
-        # Generate the PDF with non-NULL rows
-        non_null_rows = [row for row in rows if row[0] is not None]
-        generate_pdf(output_pdf, non_null_rows)
 
     # Stop the edit operation, and commit the changes
     edit.stopOperation()
