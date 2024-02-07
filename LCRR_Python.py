@@ -1,4 +1,5 @@
 import arcpy
+import os
 import uuid
 import datetime
 import reportlab
@@ -16,6 +17,7 @@ arcpy.env.workspace = str(gdb)
 ##use the fc/table in the map
 # wServices = gdb + str('\DBO.wServices')
 wServices = str('wServices')
+wMeters = str('wMeters')
 # LCRR_Letter_Tracking = gdb + str('\DBO.LCRRLetterTracking')
 LCRR_Letter_Tracking = str("LCRR Letter Tracking")
 
@@ -23,6 +25,14 @@ LCRR_Letter_Tracking = str("LCRR Letter Tracking")
 current_date = datetime.datetime.now().strftime("%Y-%m-%d")  # Formats the date as YYYY-MM-DD
 
 template_pdf_path = f'{working_folder}\\Newport_SLM_Postcard.pdf'
+
+# Construct the path to the folder within the working_folder
+date_specific_folder = os.path.join(working_folder, current_date)
+# Check if the folder exists, and if not, create it
+if not os.path.exists(date_specific_folder):
+    os.makedirs(date_specific_folder)
+    arcpy.AddMessage(f"Created folder: {date_specific_folder}")
+
 
 def add_multiline_address_to_pdf(template_pdf_path, output_pdf_path, address_lines, x_position=288, y_position=94, line_spacing=14):
     """
@@ -72,8 +82,20 @@ if int(arcpy.GetCount_management(wServices)[0]) > 0:
     use_selected_features = True
 
 # Fields to be used from the feature class and related table
-feature_fields = ["LetterRelID", "PointAddress"]
+feature_fields = ["LetterRelID", "Acctnum"]
 table_fields = ["LetterID", "LetterRelID", "LetterSentDate", "LetterType"]
+meters_fields = ["acctnum", "owner_address1", "owner_address2", "owner_address3", "owner_address4", "owner_address5"]
+
+
+
+# Create a dictionary to map 'acctnum' to owner_address fields from wMeters
+acctnum_to_address = {}
+with arcpy.da.SearchCursor(wMeters, meters_fields) as cursor:
+    for row in cursor:
+        # Store all owner_address fields in a list, ensuring they are added only if they are not None or empty
+        address_fields = [row[i] for i in range(1, len(row)) if row[i]]
+        acctnum_to_address[row[0]] = address_fields
+
 
 # Editor session
 edit = arcpy.da.Editor(gdb)
@@ -90,16 +112,24 @@ try:
         with arcpy.da.InsertCursor(LCRR_Letter_Tracking, table_fields) as insert_cursor:
             for row in rows:
                 if row[0] is not None:  # Check if LetterRelID is not NULL
+                    # Use the mapped address lines for the acctnum, if available
+                    if row[1] in acctnum_to_address:
+                        # Fetch the address lines from the dictionary and append the static line
+                        address_lines = acctnum_to_address[row[1]] + ['cityofnewport.com/lead']
+                    else:
+                        # Fallback if acctnum is not found, this can be adjusted as needed
+                        arcpy.AddMessage(f"Acctnum '{row[1]}' not found in wMeters. Using default address.")
+                        address_lines = ["Address not found", 'cityofnewport.com/lead']
+                                                          
                     # Create a new row for the related table
                     new_row = (str(uuid.uuid4()), row[0], current_date, "Postcard")  # Include a new UUID, LetterRelID, current date, and set LetterType to "Postcard"
                     # Insert the new row into the related table
                     insert_cursor.insertRow(new_row)
-                    # arcpy.AddMessage(f"{row[1]}")
-                    address_lines = [row[1], "Newport, RI 02840", 'cityofnewport.com/lead']
-                    output_pdf_path = working_folder + '\Postcard_' + row[0] + '.pdf'
+                    output_pdf_path = os.path.join(date_specific_folder, 'Postcard_' + row[0] + '.pdf')
                     add_multiline_address_to_pdf(template_pdf_path, output_pdf_path, address_lines)
                 else:
                     arcpy.AddMessage(f"Record with Address '{row[1]}' has a NULL value in LetterRelID")
+            
 
     # Stop the edit operation, and commit the changes
     edit.stopOperation()
