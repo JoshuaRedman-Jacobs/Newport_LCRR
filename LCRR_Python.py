@@ -34,7 +34,7 @@ if not os.path.exists(date_specific_folder):
     arcpy.AddMessage(f"Created folder: {date_specific_folder}")
 
 
-def add_multiline_address_to_pdf(template_pdf_path, output_pdf_path, address_lines, x_position=288, y_position=94, line_spacing=14):
+def add_multiline_address_to_pdf(template_pdf_path, output_pdf_path, address_lines, x_position=288, y_position=275, line_spacing=14):
     """
     Adds a multi-line address to a PDF.
 
@@ -47,7 +47,7 @@ def add_multiline_address_to_pdf(template_pdf_path, output_pdf_path, address_lin
     - line_spacing: The amount of space between each line of the address.
     """
     # Create a temporary PDF with the address
-    address_pdf_path = 'temp_address_overlay.pdf'
+    address_pdf_path = f'{working_folder}\\temp_address_overlay.pdf'
     c = canvas.Canvas(address_pdf_path)
     
     # Draw each line of the address, adjusting the Y position for each line
