@@ -22,9 +22,6 @@ LCRR_Letter_Tracking = str("LCRR Letter Tracking")
 # Get the current date
 current_date = datetime.datetime.now().strftime("%Y-%m-%d")  # Formats the date as YYYY-MM-DD
 
-
-# Output PDF path
-# output_pdf_path = working_folder + 'Postcards\Postcard_' + current_date + '.pdf'
 template_pdf_path = f'{working_folder}\\Newport_SLM_Postcard.pdf'
 
 def add_multiline_address_to_pdf(template_pdf_path, output_pdf_path, address_lines, x_position=288, y_position=94, line_spacing=14):
