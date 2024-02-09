@@ -19,7 +19,7 @@ arcpy.env.workspace = str(gdb)
 wServices = str('wServices')
 wMeters = str('wMeters')
 # LCRR_Letter_Tracking = gdb + str('\DBO.LCRRLetterTracking')
-LCRR_Letter_Tracking = str("LCRR Letter Tracking")
+LCRR_Letter_Tracking = str("LCRRLetterTracking")
 
 # Get the current date
 current_date = datetime.datetime.now().strftime("%Y-%m-%d")  # Formats the date as YYYY-MM-DD
