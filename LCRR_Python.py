@@ -16,10 +16,14 @@ arcpy.env.workspace = str(gdb)
 # Feature class and related table paths
 ##use the fc/table in the map
 # wServices = gdb + str('\DBO.wServices')
-wServices = str('wServices')
-wMeters = str('wMeters')
-# LCRR_Letter_Tracking = gdb + str('\DBO.LCRRLetterTracking')
-LCRR_Letter_Tracking = str("LCRRLetterTracking")
+# wServices = str('wServices')
+wServices = arcpy.GetParameterAsText(0)
+wMeters = gdb + str('\DBO.wMeters')
+# wMeters = arcpy.GetParameterAsText(1)
+# wMeters = str('wMeters')
+LCRR_Letter_Tracking = gdb + str('\DBO.LCRRLetterTracking')
+# LCRR_Letter_Tracking = str("LCRRLetterTracking")
+# LCRR_Letter_Tracking = arcpy.GetParameterAsText(1)
 
 # Get the current date
 current_date = datetime.datetime.now().strftime("%Y-%m-%d")  # Formats the date as YYYY-MM-DD
@@ -33,6 +37,12 @@ if not os.path.exists(date_specific_folder):
     os.makedirs(date_specific_folder)
     arcpy.AddMessage(f"Created folder: {date_specific_folder}")
 
+def create_feature_set(input_feature_class):
+    # Create a new FeatureSet object
+    feature_set = arcpy.FeatureSet()
+    # Load the feature class into the FeatureSet
+    feature_set.load(input_feature_class)
+    return feature_set
 
 def add_multiline_address_to_pdf(template_pdf_path, output_pdf_path, address_lines, x_position=288, y_position=275, line_spacing=14):
     """
@@ -74,12 +84,14 @@ def add_multiline_address_to_pdf(template_pdf_path, output_pdf_path, address_lin
     
     with open(output_pdf_path, 'wb') as out_file:
         output_pdf.write(out_file)
-        
-           
-# Determine whether to process selected features or all features
-use_selected_features = False
-if int(arcpy.GetCount_management(wServices)[0]) > 0:
-    use_selected_features = True
+
+
+# # Determine whether to process selected features or all features
+# use_selected_features = False
+# if int(arcpy.GetCount_management(wServices)[0]) > 0:
+#     use_selected_features = True
+
+
 
 # Fields to be used from the feature class and related table
 feature_fields = ["LetterRelID", "Acctnum"]
@@ -104,7 +116,7 @@ edit.startEditing(False, True)
 edit.startOperation()
 
 try:
-    with arcpy.da.SearchCursor(wServices, feature_fields, None if use_selected_features else "LetterRelID IS NOT NULL") as cursor:
+    with arcpy.da.SearchCursor(wServices, feature_fields) as cursor:
         # Read all rows into a list first
         rows = [row for row in cursor]
 
