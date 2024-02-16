@@ -137,10 +137,10 @@ except Exception as e:
     arcpy.AddError(f"An error occurred: {str(e)}")
 
 with zipfile.ZipFile(zip_file_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-for root, dirs, files in os.walk(date_specific_folder):
-    for file in files:
-        file_path = os.path.join(root, file)
-        zipf.write(file_path, arcname=os.path.relpath(file_path, start=date_specific_folder))
+    for root, dirs, files in os.walk(date_specific_folder):
+        for file in files:
+            file_path = os.path.join(root, file)
+            zipf.write(file_path, arcname=os.path.relpath(file_path, start=date_specific_folder))
 
 # Set the zip file path as an output parameter
 arcpy.SetParameterAsText(1, zip_file_path)
