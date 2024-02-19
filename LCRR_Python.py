@@ -4,14 +4,13 @@ import uuid
 import zipfile
 import datetime
 import reportlab
+import shutil
 from reportlab.pdfgen import canvas
 from PyPDF2 import PdfFileReader, PdfFileWriter
 
 # Set the workspace 
-# working_folder = r'\\MNUSLAS2NPTCX02\Data\Analysis\LCRR\Postcards'
-working_folder = r'C:\Users\JR067290\OneDrive - Jacobs\Documents\ArcGIS\Projects\Newport_LCRR'
-# gdb = r'\\MNUSLAS2NPTCX02\Data\Connections\NWDWaterSystem_EDIT_AGOL.sde'
-gdb = r'C:\Users\JR067290\OneDrive - Jacobs\Documents\ArcGIS\Projects\Newport_LCRR\Newport_LCRR.gdb'
+working_folder = r'\\MNUSLAS2NPTCX02\Data\Analysis\LCRR\Postcards'
+gdb = r'\\MNUSLAS2NPTCX02\Data\Connections\NWDWaterSystem_EDIT_AGOL.sde'
 
 arcpy.env.workspace = str(gdb)
 ##use the fc/table in the map
@@ -33,10 +32,7 @@ if not os.path.exists(date_specific_folder):
     arcpy.AddMessage(f"Created folder: {date_specific_folder}")
 
 
-zip_file_name = datetime.datetime.now().strftime('%Y%m%d') + '_PDFs.zip'
-zip_file_path = os.path.join(working_folder, zip_file_name)
-
-def add_multiline_address_to_pdf(template_pdf_path, output_pdf_path, address_lines, x_position=288, y_position=275, line_spacing=14):
+def add_multiline_address_to_pdf(template_pdf_path, output_pdf_path, address_lines, x_position=288, y_position=150, line_spacing=14):
     """
     Adds a multi-line address to a PDF.
 
@@ -136,11 +132,26 @@ except Exception as e:
     edit.abortOperation()
     arcpy.AddError(f"An error occurred: {str(e)}")
 
+
+
+zip_file_name = datetime.datetime.now().strftime('%Y%m%d') + '_PDFs.zip'
+zip_file_path = os.path.join(arcpy.env.scratchFolder, zip_file_name)
+
+# Zip the PDFs
 with zipfile.ZipFile(zip_file_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
     for root, dirs, files in os.walk(date_specific_folder):
         for file in files:
-            file_path = os.path.join(root, file)
-            zipf.write(file_path, arcname=os.path.relpath(file_path, start=date_specific_folder))
+            if file.endswith('.pdf'):
+                pdf_file_path = os.path.join(root, file)
+                # Here we ensure the file paths added to the zip are relative to the folder being zipped
+                zipf.write(pdf_file_path, arcname=os.path.relpath(pdf_file_path, start=date_specific_folder))
 
-# Set the zip file path as an output parameter
+# Set the zip file path as the output parameter
+# Ensure the output parameter index matches your tool's configuration
 arcpy.SetParameterAsText(1, zip_file_path)
+
+# Path where you want to copy the zip file in the working_folder
+destination_zip_path = os.path.join(f'{working_folder}\Zip_Folders', datetime.datetime.now().strftime('%Y%m%d%H%M') + '_PDFs.zip')
+
+# Copy the zip file to the specified location
+shutil.copy2(zip_file_path, destination_zip_path)

@@ -1,6 +1,7 @@
 import arcpy
 import os
 import uuid
+import zipfile
 import datetime
 import reportlab
 from reportlab.pdfgen import canvas
@@ -8,22 +9,14 @@ from PyPDF2 import PdfFileReader, PdfFileWriter
 
 # Set the workspace 
 working_folder = r'\\MNUSLAS2NPTCX02\Data\Analysis\LCRR\Postcards'
-# working_folder = r'C:\Users\JR067290\OneDrive - Jacobs\Documents\ArcGIS\Projects\Newport_LCRR'
 gdb = r'\\MNUSLAS2NPTCX02\Data\Connections\NWDWaterSystem_EDIT_AGOL.sde'
-# gdb = r'C:\Users\JR067290\OneDrive - Jacobs\Documents\ArcGIS\Projects\Newport_LCRR\Newport_LCRR.gdb'
 
 arcpy.env.workspace = str(gdb)
-# Feature class and related table paths
 ##use the fc/table in the map
-# wServices = gdb + str('\DBO.wServices')
-# wServices = str('wServices')
 wServices = arcpy.GetParameterAsText(0)
 wMeters = gdb + str('\DBO.wMeters')
-# wMeters = arcpy.GetParameterAsText(1)
-# wMeters = str('wMeters')
 LCRR_Letter_Tracking = gdb + str('\DBO.LCRRLetterTracking')
-# LCRR_Letter_Tracking = str("LCRRLetterTracking")
-# LCRR_Letter_Tracking = arcpy.GetParameterAsText(1)
+
 
 # Get the current date
 current_date = datetime.datetime.now().strftime("%Y-%m-%d")  # Formats the date as YYYY-MM-DD
@@ -37,14 +30,11 @@ if not os.path.exists(date_specific_folder):
     os.makedirs(date_specific_folder)
     arcpy.AddMessage(f"Created folder: {date_specific_folder}")
 
-def create_feature_set(input_feature_class):
-    # Create a new FeatureSet object
-    feature_set = arcpy.FeatureSet()
-    # Load the feature class into the FeatureSet
-    feature_set.load(input_feature_class)
-    return feature_set
 
-def add_multiline_address_to_pdf(template_pdf_path, output_pdf_path, address_lines, x_position=288, y_position=275, line_spacing=14):
+zip_file_name = datetime.datetime.now().strftime('%Y%m%d') + '_PDF.zip'
+zip_file_path = os.path.join(working_folder, zip_file_name)
+
+def add_multiline_address_to_pdf(template_pdf_path, output_pdf_path, address_lines, x_position=288, y_position=150, line_spacing=14):
     """
     Adds a multi-line address to a PDF.
 
@@ -85,14 +75,6 @@ def add_multiline_address_to_pdf(template_pdf_path, output_pdf_path, address_lin
     with open(output_pdf_path, 'wb') as out_file:
         output_pdf.write(out_file)
 
-
-# # Determine whether to process selected features or all features
-# use_selected_features = False
-# if int(arcpy.GetCount_management(wServices)[0]) > 0:
-#     use_selected_features = True
-
-
-
 # Fields to be used from the feature class and related table
 feature_fields = ["LetterRelID", "Acctnum"]
 table_fields = ["LetterID", "LetterRelID", "LetterSentDate", "LetterType"]
@@ -107,7 +89,6 @@ with arcpy.da.SearchCursor(wMeters, meters_fields) as cursor:
         # Store all owner_address fields in a list, ensuring they are added only if they are not None or empty
         address_fields = [row[i] for i in range(1, len(row)) if row[i]]
         acctnum_to_address[row[0]] = address_fields
-
 
 # Editor session
 edit = arcpy.da.Editor(gdb)
@@ -152,3 +133,13 @@ except Exception as e:
     # If an error occurred, abort the edit operation
     edit.abortOperation()
     arcpy.AddError(f"An error occurred: {str(e)}")
+
+with zipfile.ZipFile(zip_file_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+    for root, dirs, files in os.walk(date_specific_folder):
+        for file in files:
+            file_path = os.path.join(root, file)
+            zipf.write(file_path, arcname=os.path.relpath(file_path, start=date_specific_folder))
+
+# Set the zip file path as an output parameter
+arcpy.AddMessage(zip_file_path)
+arcpy.SetParameterAsText(0, zip_file_path)
